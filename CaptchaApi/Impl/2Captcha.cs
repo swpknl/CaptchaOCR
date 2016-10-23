@@ -38,7 +38,7 @@
 
         public string GetResult()
         {
-            var balance = this.GetBalance();
+            this.GetBalance();
             var url = string.Format(this.responseUrl, APIConstants.ApiKey, this.captchaId);
             var request = (HttpWebRequest)WebRequest.Create(url);
             request.Method = "GET";
