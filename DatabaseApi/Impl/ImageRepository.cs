@@ -30,12 +30,9 @@
             {
                 return null;
             }
-            else
-            {
-                var images = from DataRow row in dt.AsEnumerable() select row[2].ToString();
-                return images;
-            }
-            
+
+            var images = from DataRow row in dt.AsEnumerable() select row[2].ToString();
+            return images;
         }
 
         public Image GetImageByKey(string imageKey)
@@ -46,18 +43,9 @@
             {
                 return null;    
             }
-            else
-            {
-                var images = from DataRow row in dt.AsEnumerable() select new Image(row[1].ToString(), row[2].ToString());
-                if (images.Any())
-                {
-                    return images.Distinct().First();
-                }
-                else
-                {
-                    return null;
-                }
-            }
+
+            var images = from DataRow row in dt.AsEnumerable() select new Image(row[1].ToString(), row[2].ToString());
+            return images.Any() ? images.Distinct().First() : null;
         }
 
         public void InsertImage(Image image)

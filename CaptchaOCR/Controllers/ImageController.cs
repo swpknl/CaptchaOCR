@@ -1,16 +1,15 @@
-﻿namespace OCRApi.Controller
+﻿namespace CaptchaOCR.Controllers
 {
     using System;
     using System.Collections.Generic;
     using System.Net.Http;
     using System.Threading;
-    using System.Threading.Tasks;
-    using System.Timers;
-    using System.Web;
     using System.Web.Http;
 
     using CaptchaApi.Contracts;
     using CaptchaApi.Impl;
+
+    using Constants;
 
     using DatabaseApi.Contracts;
     using DatabaseApi.Impl;
@@ -23,7 +22,6 @@
     {
         private readonly ICaptchaApi captchaApi;
         private readonly IImageRepository repository;
-        private readonly IDbAdapter adapter;
 
         private Image databaseImage;
 
@@ -34,9 +32,9 @@
 
         public ImageController()
         {
-            this.captchaApi = new _2Captcha();
-            this.adapter = new MsAccessAdapter();
-            this.repository = new ImageRepository(this.adapter);
+            this.captchaApi = new TwoCaptcha();
+            IDbAdapter adapter = new MsAccessAdapter();
+            this.repository = new ImageRepository(adapter);
         }
 
         public IEnumerable<string> Get()
@@ -47,7 +45,7 @@
         [HttpPost]
         public HttpResponseMessage GetResult()
         {
-            var imageBytes = Request.Content.ReadAsByteArrayAsync().Result;
+            var imageBytes = this.Request.Content.ReadAsByteArrayAsync().Result;
             var image = Convert.ToBase64String(imageBytes);
             string imageKey = image.GetImageKey();
             if (this.IsImagePresent(imageKey))
@@ -55,35 +53,42 @@
                 // Retrieve databaseImage from DB and send the text
                 return new HttpResponseMessage { Content = new StringContent(this.databaseImage.Text) };
             }
-            else
+
+            // Make API call 
+            var output = this.MakeApiCall(imageBytes);
+            if (output.Equals(
+                _2CaptchaConstants.ERROR_IMAGE_TYPE_NOT_SUPPORTED,
+                StringComparison.InvariantCultureIgnoreCase))
             {
-                // Make API call 
-                var output = this.MakeApiCall(imageBytes);
-                if (output.Equals(
-                    Constants._2CaptchaConstants.ERROR_IMAGE_TYPE_NOT_SUPPORTED,
-                    StringComparison.InvariantCultureIgnoreCase))
-                {
-                    return new HttpResponseMessage { Content = new StringContent(Constants._2CaptchaConstants.ERROR_IMAGE_TYPE_NOT_SUPPORTED) };
-                }
-                else if (output.Equals("ERROR", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    return new HttpResponseMessage { Content = new StringContent("Error while making API call") };
-                }
-                else if (output.Equals(Constants._2CaptchaConstants.ERROR_CAPTCHA_UNSOLVABLE, StringComparison.InvariantCultureIgnoreCase))
-                {
-                    return new HttpResponseMessage { Content = new StringContent(Constants._2CaptchaConstants.ERROR_CAPTCHA_UNSOLVABLE) };
-                }
-                else
-                {
-                    // Add databaseImage to DB    
-                    this.repository.InsertImage(new Image(imageKey, output));
-                    return new HttpResponseMessage { Content = new StringContent(output) };
-                }
+                return new HttpResponseMessage
+                           {
+                               Content =
+                                   new StringContent(
+                                   _2CaptchaConstants.ERROR_IMAGE_TYPE_NOT_SUPPORTED)
+                           };
             }
+
+            if (output.Equals("ERROR", StringComparison.InvariantCultureIgnoreCase))
+            {
+                return new HttpResponseMessage { Content = new StringContent("Error while making API call") };
+            }
+
+            if (output.Equals(_2CaptchaConstants.ERROR_CAPTCHA_UNSOLVABLE, StringComparison.InvariantCultureIgnoreCase))
+            {
+                return new HttpResponseMessage
+                           {
+                               Content =
+                                   new StringContent(_2CaptchaConstants.ERROR_CAPTCHA_UNSOLVABLE)
+                           };
+            }
+
+            // Add databaseImage to DB    
+            this.repository.InsertImage(new Image(imageKey, output));
+            return new HttpResponseMessage { Content = new StringContent(output) };
         }
 
         private string MakeApiCall(byte[] image)
-        {   
+        {
             if (this.captchaApi.CallApi(image))
             {
                 while (true)
@@ -92,35 +97,34 @@
                     Thread.Sleep(1000);
                     var result = this.captchaApi.GetResult();
 
-                    if (result.Contains(Constants._2CaptchaConstants.ERROR_CAPTCHA_UNSOLVABLE))
+                    if (result.Contains(_2CaptchaConstants.ERROR_CAPTCHA_UNSOLVABLE))
                     {
-                        return Constants._2CaptchaConstants.ERROR_CAPTCHA_UNSOLVABLE;
+                        return _2CaptchaConstants.ERROR_CAPTCHA_UNSOLVABLE;
                     }
-                    else if (result.Contains(Constants._2CaptchaConstants.ERROR_IMAGE_TYPE_NOT_SUPPORTED))
+
+                    if (result.Contains(_2CaptchaConstants.ERROR_IMAGE_TYPE_NOT_SUPPORTED))
                     {
-                        return Constants._2CaptchaConstants.ERROR_IMAGE_TYPE_NOT_SUPPORTED;
+                        return _2CaptchaConstants.ERROR_IMAGE_TYPE_NOT_SUPPORTED;
                     }
-                    else if (result.Contains(Constants._2CaptchaConstants.ERROR))
+
+                    if (result.Contains(_2CaptchaConstants.ERROR))
                     {
                         return "ERROR";
                     }
-                    else if (result.Contains(Constants._2CaptchaConstants.CAPCHA_NOT_READY))
+
+                    if (result.Contains(_2CaptchaConstants.CAPCHA_NOT_READY))
                     {
-                        continue;
                     }
                     else
                     {
                         return result;
                     }
                 }
-                
             }
-            else
-            {
-                return "ERROR";
-            }
+
+            return "ERROR";
         }
-        
+
         private bool IsImagePresent(string imageKey)
         {
             // Make DB call
@@ -130,10 +134,8 @@
                 this.databaseImage = new Image(result.ImageKey, result.Text);
                 return true;
             }
-            else
-            {
-                return false;
-            }
+
+            return false;
         }
     }
 }

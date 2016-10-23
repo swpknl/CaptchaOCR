@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
-using System.Web.Http;
-using System.Web.Routing;
-
-namespace CaptchaOCR
+﻿namespace CaptchaOCR
 {
-    public class WebApiApplication : System.Web.HttpApplication
+    using System.Web;
+    using System.Web.Http;
+
+    public class WebApiApplication : HttpApplication
     {
         protected void Application_Start()
         {

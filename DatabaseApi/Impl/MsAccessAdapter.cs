@@ -1,11 +1,8 @@
 ﻿namespace DatabaseApi.Impl
 {
     using System;
-    using System.Data.OleDb;
-    using System.Collections.Generic;
     using System.Data;
-
-    using Common;
+    using System.Data.OleDb;
 
     using DatabaseApi.Contracts;
 

@@ -1,10 +1,7 @@
 ﻿namespace DatabaseApi.Contracts
 {
     using System;
-    using System.Collections.Generic;
     using System.Data;
-
-    using Entities;
 
     public interface IDbAdapter : IDisposable
     {
